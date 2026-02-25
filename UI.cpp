@@ -40,7 +40,12 @@ panel::panel(int X, int Y, int W, int H, bool visible,int SID)
 }
 
 panel::~panel(){
-	for(std::forward_list<baseWidget*>::iterator i = childObj.begin();i!=childObj.end();i++) delete *i;
+	while(!childObj.empty()){
+		delete *childObj.begin();
+		childObj.pop_front();
+	}
+	
+//	for(std::forward_list<baseWidget*>::iterator i = childObj.begin();i!=childObj.end();i++) delete *i;
 }
 
 bool panel::check_collisions(int Mx, int My){
@@ -172,7 +177,7 @@ void add_widget(int X, int Y, int W, int H,short panelID, short type, bool visib
 }
 
 void destroy_all_UI(){
-	for(auto i: savedPanels){
+	for(auto &i: savedPanels){
 		delete i.second;
 	}
 }

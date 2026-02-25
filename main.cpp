@@ -262,6 +262,7 @@ int main() {
 	}
 
 
+
 	al_init_primitives_addon();
 	al_init_font_addon();
 	al_init_image_addon();
@@ -295,7 +296,7 @@ int main() {
 
 	ALLEGRO_MOUSE_STATE mouse;
 	
-	ALLEGRO_TIMER *fps = al_create_timer(1.0/128.0);
+	ALLEGRO_TIMER *fps = al_create_timer(1.0/64.0);
 
 	
 
@@ -325,7 +326,9 @@ int main() {
 		
 		graphMNG.begin_draw_loop();
 
-		al_wait_for_event(frames,&bin);
+		al_wait_for_event(frames,NULL);
+
+		while(al_drop_next_event(frames));
 
 		while(al_get_next_event(queue,&ev))user_input(ev);
 

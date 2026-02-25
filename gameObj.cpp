@@ -52,16 +52,22 @@ screen::screen(int ID, SN_ID spr)
 }
 
 screen::~screen(){
-	for(std::forward_list<object*>::iterator i = interact.begin();i!=interact.end();i++) delete *i;
+//	std::forward_list<object*>::iterator i;
+	while(!interact.empty()){
+		delete *interact.begin();
+		interact.pop_front();
+	}
+//	for(std::forward_list<object*>::iterator i = interact.begin();i!=interact.end();i++) delete *i;
 }
 
 bool screen::delete_child_object(int childSID){
 	std::cout<<childSID<<"\nDEL\n";
 	if(childSID==OID_GENERIC)return false;
 	std::cout<<"DELETE\n";
-	for(std::forward_list<object*>::iterator i = interact.before_begin();std::next(i)!=interact.end();i++){
-		std::cout<<(**std::next(i)).sID<<std::endl;
-		if((**std::next(i)).sID == childSID){
+	for(std::forward_list<object*>::iterator i = interact.before_begin();std::next(i)!=interact.end() ;i++){
+		std::cout<<(**std::next(i)).sID<< ' ' << *std::next(i) << std::endl;
+		if(!*std::next(i)) continue;
+		if((*std::next(i))->sID == childSID){
 			
 			delete *std::next(i);
 			interact.erase_after(i);
