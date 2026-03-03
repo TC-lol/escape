@@ -36,4 +36,16 @@ electrical_box
 screwdriver
 ,
 powerJunction
+,
+powerJunction0
+,
+powerJunction1
+,
+powerJunction2
+,
+powerJunction3
+,
+powerJunction4
+,
+powerJunction5
 ,}SN_ID;

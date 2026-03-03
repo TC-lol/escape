@@ -67,7 +67,8 @@
 //		resulted in making it so, that buttons can now, simultaneously display both an image and a piece of text. 
 std::map<int,const char*> invItems={
 										{OID_PLACEHOLDER,"placeHolder"},
-										{OID_SCREWDRIVER,"screwdriver"}
+										{OID_SCREWDRIVER,"screwdriver"},
+										{OID_CHAIN_LINKS,"chain links"},
 										};
 //Apparently, due to, lord knows what circumstances, when trying to store a string in a map, it does not work. const *char has to be utilised//
 //EDIT: Apparently, printf() simply is not compatibile with std::string, and the Error was caused be the function returning NULL...
@@ -94,6 +95,8 @@ std::map<int,std::string> textContainer={
 		{-5,"I'd rather really not have to open this door. Actually, where even are it's hinges? It's' just... floating... menacingly..."},
 		{-6,"... ... phew, it's locked."},
 		
+		{-2001,"It's screwed tight, I will need a screwdriver - or, at the very least a knife - to open it."},
+		
 		{-1000-OID_PLACEHOLDER,"(I got... something... Actually, what the heck is this?)"},
 		{-1000-OID_SCREWDRIVER,"(An old screwdriver - worn, but could prove useful.)"},
 		
@@ -111,17 +114,29 @@ std::map<int,std::string> textContainer={
 //		{50*,""},
 //		{50*,""},
 		};
-
-
+/*ADDED: 03.03.26 12:36
+*Clarification regarding the numeration of text:
+*	- Positive numbers are reserved for texts related to entering specific scenes - 50*(sceneID)+(a positive number);
+*	- Negatives from -1 to -1000 are reserved for dialogue caused by interacting with objects - texts meant to display
+*			in a specific order are to be put in a descending order;
+*	- Negatives from -1000 to -2000 are reserved for lines when picking up items;
+*	- Negatives from -2001 are reserved for single-line texts when inspecting something;
+*
+****I do NOT want to bother with creating an arbitrary dialogue handler for a project this small, especially when it is not at all crucial to the game's design****
+*/
+/* TODO (TC#1#): This is a test TO-DO; I am curious about 
+                 this feature, and whether this note will 
+                 disappear once I reopen this program */
+//Apparently, all the TO-DO feature does is make a comment... swell...
 
 bool set_text_box_pointer();
 
 //For clarity's sake, write the object placing code right after the scene it adds objects to.
-void build_levels();
+inline void build_levels();
 
-void build_UI();
+inline void build_UI();
 
-void user_input(const ALLEGRO_EVENT& ev);
+inline void user_input(const ALLEGRO_EVENT& ev);
 
 void example_event(data*t);
 
@@ -206,7 +221,9 @@ void change_text_prompt(data*t);
  *	In favour of this function - It does everything the old one is doing, but better.
  */
 
-void start_game(data*t);
+inline void start_game(data*t);
+
+//void enable_fuses(data*t);
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////  GREAT DIVIDER - FUNCTIONS BELOW MAKE USE OF THE EVENT FLAG SYSTEM  //////////////
@@ -223,7 +240,7 @@ void alter_flag(data*t);
  
 void fuse_turn(data*t);
 
-void register_events();
+inline void register_events();
 
 void game_loop(){;}
 //07.12.25 22:05 NOTICE: This will be an experimental function,
@@ -234,6 +251,19 @@ void game_loop(){;}
 //		draw method from a thread to a regular function, or dabble in some mutexes - which would be fun, 
 //		if not for how screwed my schedule is.
 
+//////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////// CUSTOM EVENTS FOR CONVENIENCE - USED AT MOST ONCE /////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+void uncover_fuses(data*t){
+	data temp={OID_FUSE1,GEV_FUSE1_POS};
+	for(int i=0;i<6;i++){
+		fuse_turn(&temp);
+		temp[1]+=1;temp[0]+=1;
+	}
+	temp[0]=OID_FUSE_COVER;
+	destroy_all_object_instances(&temp);
+}
 
 int main() {
 	
@@ -260,7 +290,6 @@ int main() {
 		std::cout << "Failed to install mouse!/n";
 		return -1;
 	}
-
 
 
 	al_init_primitives_addon();
@@ -327,7 +356,7 @@ int main() {
 		graphMNG.begin_draw_loop();
 
 		al_wait_for_event(frames,NULL);
-
+		
 		while(al_drop_next_event(frames));
 
 		while(al_get_next_event(queue,&ev))user_input(ev);
@@ -353,28 +382,33 @@ bool set_text_box_pointer(){
 	return text::theTextBox != NULL ? 1:0;
 }
 
-void build_levels(){
- 
-	 
+inline void build_levels(){
+///////
+//					<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+// A VERY IMPORTANT WARNING - EVENTS ARE SENT FROM RIGHT TO LEFT - KEEP THAT IN MIND
+//					<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+///////
+	 printf("Must I?\n");
 	SC_ID i;
 	i =add_scene(B_ROOM_L,baseScreen); 
 	
-	add_object(i,0,500,100,100,arrowRed_left,EN_CHANGE_SCENE,{B_ROOM_B});
-	add_object(i,900,500,100,100,arrowRed_right,EN_CHANGE_SCENE,{B_ROOM_F});
-	add_object(i,20,20,50,50,TEST,EN_TEST,{0});
+	add_object(i,0,500,100,100,arrowRed_left,{EN_CHANGE_SCENE},{{B_ROOM_B}});
+	printf("This was to be expected\n");
+	add_object(i,900,500,100,100,arrowRed_right,{EN_CHANGE_SCENE},{{B_ROOM_F}});
+	add_object(i,20,20,50,50,TEST,{EN_TEST},{{0}});
 	//
 	i=add_scene(B_ROOM_F,Scene1);
 	
-	add_object(i,0,500,100,100,arrowRed_left,EN_CHANGE_SCENE,{B_ROOM_L});
-	add_object(i,900,500,100,100,arrowRed_right,EN_CHANGE_SCENE,{B_ROOM_R});	
+	add_object(i,0,500,100,100,arrowRed_left,{EN_CHANGE_SCENE},{{B_ROOM_L}});
+	add_object(i,900,500,100,100,arrowRed_right,{EN_CHANGE_SCENE},{{B_ROOM_R}});	
 //	add_object(i,680,400,40,40,placeHolder,EN_PROP_EVENT,{},OID_SCREWDRIVER);
-	add_object(i,650,400,175,200,table,EN_CHANGE_SCENE,{B_ROOM_TABLE});
+	add_object(i,650,400,175,200,table,{EN_CHANGE_SCENE},{{B_ROOM_TABLE}});
 //	add_object(i,680,430,40,40,screwdriver,EN_PROP_EVENT,{},OID_SCREWDRIVER,false);
-	add_object(i,390,185,205,355,door_closed,EN_CHANGE_SCENE,{B_ROOM_DOOR});
-	add_object(i,640,140,200,200,electrical_box,EN_CHANGE_SCENE,{B_ROOM_ELEC_BOX});
-	add_object(i,655,155,170,170,electrical_box_lid,EN_PROP_EVENT,{},OID_ELEC_LID,0);
+	add_object(i,390,185,205,355,door_closed,{EN_CHANGE_SCENE},{{B_ROOM_DOOR}});
+	add_object(i,640,140,200,200,electrical_box,{EN_CHANGE_SCENE},{{B_ROOM_ELEC_BOX}});
+	add_object(i,655,155,170,170,electrical_box_lid,{EN_PROP_EVENT},{{}},OID_ELEC_LID,0);
 	//test temporary
-	add_object(i,60,60,50,50,TEST,EN_CHANGE_TEXT_PROMPT,{-1,-3,OID_TEST_SUBJECT,0,B_ROOM_F},OID_TEST_SUBJECT);
+	add_object(i,60,60,50,50,TEST,{EN_CHANGE_TEXT_PROMPT},{{-1,-3,OID_TEST_SUBJECT,0,B_ROOM_F}},OID_TEST_SUBJECT);
 	//
 // *Stress testing the drawing engine
 //	for(int i=1; i<100;i++)for(int j=1;j<10;j++) add_object(B_ROOM_F,100+i,100+j,40,40,placeHolder,EN_PROP_EVENT,{},OID_PLACEHOLDER,0);
@@ -383,44 +417,56 @@ void build_levels(){
 	
 	i=add_scene(B_ROOM_TABLE,baseScreenTable);
 	
-	add_object(i,200,620,220,50,arrowRed_down,EN_CHANGE_SCENE,{B_ROOM_F,1});
-	add_object(i,680,500,225,75,letter,EN_PROP_EVENT,{});
+	add_object(i,200,620,220,50,arrowRed_down,{EN_CHANGE_SCENE},{{B_ROOM_F,1}});
+	add_object(i,680,500,225,75,letter,{EN_PROP_EVENT},{{}});
 //	add_object(i,400,310,200,200,placeHolder,EN_ADD_ITEM_TO_INV,{B_ROOM_TABLE,OID_PLACEHOLDER,1,placeHolder},OID_PLACEHOLDER);
 	//
 	i=add_scene(B_ROOM_B,baseScreen);
 	
-	add_object(i,0,500,100,100,arrowRed_left,EN_CHANGE_SCENE,{B_ROOM_R});
-	add_object(i,900,500,100,100,arrowRed_right,EN_CHANGE_SCENE,{B_ROOM_L});
+	add_object(i,0,500,100,100,arrowRed_left,{EN_CHANGE_SCENE},{{B_ROOM_R}});
+	add_object(i,900,500,100,100,arrowRed_right,{EN_CHANGE_SCENE},{{B_ROOM_L}});
 	//
 	i=add_scene(B_ROOM_R,baseScreen);
 	
-	add_object(i,835,515,-1,-1,screwdriver,EN_ADD_ITEM_TO_INV,{OID_SCREWDRIVER,WID_INV,1,screwdriver},OID_SCREWDRIVER);
-	add_object(i,0,500,100,100,arrowRed_left,EN_CHANGE_SCENE,{B_ROOM_F});
-	add_object(i,900,500,100,100,arrowRed_right,EN_CHANGE_SCENE,{B_ROOM_B});
+	add_object(i,835,515,-1,-1,screwdriver,{EN_ADD_ITEM_TO_INV},{{OID_SCREWDRIVER,WID_INV,1,screwdriver}},OID_SCREWDRIVER);
+	add_object(i,0,500,100,100,arrowRed_left,{EN_CHANGE_SCENE},{{B_ROOM_F}});
+	add_object(i,900,500,100,100,arrowRed_right,{EN_CHANGE_SCENE},{{B_ROOM_B}});
 
 	i=add_scene(B_ROOM_DOOR,baseScreenDoor);
 	
-	add_object(i,100,620,220,50,arrowRed_down,EN_CHANGE_SCENE,{B_ROOM_F,2});
-	add_object(i,310,65,350,600,door_closed,EN_CHANGE_TEXT_PROMPT,{-4,-6,OID_OMINOUS_DOOR,3},OID_OMINOUS_DOOR);
+	add_object(i,100,620,220,50,arrowRed_down,{EN_CHANGE_SCENE},{{B_ROOM_F,2}});
+	add_object(i,310,65,350,600,door_closed,{EN_CHANGE_TEXT_PROMPT},{{-4,-6,OID_OMINOUS_DOOR,3}},OID_OMINOUS_DOOR);
 	
 	i=add_scene(B_ROOM_ELEC_BOX,invis);
 	
-	add_object(i,300,50,600,600,electrical_box,EN_PROP_EVENT,{},OID_GENERIC,0);
+	add_object(i,300,50,600,600,electrical_box,{EN_PROP_EVENT},{{}},OID_GENERIC,0);
+//*	
+	add_object(i,495,155,60,60,powerJunction,{EN_FUSE_TURN,EN_ALTER_FLAG,EN_ALTER_FLAG},{{OID_FUSE1,GEV_FUSE1_POS},{GEV_FUSE1_POS,'%',6},{GEV_FUSE1_POS,'+',1}},OID_FUSE1);
+	add_object(i,495,315,60,60,powerJunction,{EN_FUSE_TURN,EN_ALTER_FLAG,EN_ALTER_FLAG},{{OID_FUSE2,GEV_FUSE2_POS},{GEV_FUSE2_POS,'%',6},{GEV_FUSE2_POS,'+',1}},OID_FUSE2);
+	add_object(i,495,475,60,60,powerJunction,{EN_FUSE_TURN,EN_ALTER_FLAG,EN_ALTER_FLAG},{{OID_FUSE3,GEV_FUSE3_POS},{GEV_FUSE3_POS,'%',6},{GEV_FUSE3_POS,'+',1}},OID_FUSE3);
+	add_object(i,655,155,60,60,powerJunction,{EN_FUSE_TURN,EN_ALTER_FLAG,EN_ALTER_FLAG},{{OID_FUSE4,GEV_FUSE4_POS},{GEV_FUSE4_POS,'%',6},{GEV_FUSE4_POS,'+',1}},OID_FUSE4);
+	add_object(i,655,315,60,60,powerJunction,{EN_FUSE_TURN,EN_ALTER_FLAG,EN_ALTER_FLAG},{{OID_FUSE5,GEV_FUSE5_POS},{GEV_FUSE5_POS,'%',6},{GEV_FUSE5_POS,'+',1}},OID_FUSE5);
+	add_object(i,655,475,60,60,powerJunction,{EN_FUSE_TURN,EN_ALTER_FLAG,EN_ALTER_FLAG,},{{OID_FUSE6,GEV_FUSE6_POS},{GEV_FUSE6_POS,'%',6},{GEV_FUSE6_POS,'+',1}},OID_FUSE6);
+
+//	printf("Seriously?? ALL of this work, for NOTHING!?\n");
+//	False alarm, I repeat: false alarm. Make sure that the amount oof vectors is equal to number of event ID-s provided, and vice-versa.
+	add_object(i,495,155,60,60,invis,{EN_UNCOVER_FUSES},{{}},{EN_PROP_EVENT},{{}},OID_CHAIN_LINKS,OID_FUSE_COVER,true,false);
+	add_object(i,495,315,60,60,invis,{EN_UNCOVER_FUSES},{{}},{EN_PROP_EVENT},{{}},OID_CHAIN_LINKS,OID_FUSE_COVER,true,false);
+	add_object(i,495,475,60,60,invis,{EN_UNCOVER_FUSES},{{}},{EN_PROP_EVENT},{{}},OID_CHAIN_LINKS,OID_FUSE_COVER,true,false);
+	add_object(i,655,155,60,60,invis,{EN_UNCOVER_FUSES},{{}},{EN_PROP_EVENT},{{}},OID_CHAIN_LINKS,OID_FUSE_COVER,true,false);
+	add_object(i,655,315,60,60,invis,{EN_UNCOVER_FUSES},{{}},{EN_PROP_EVENT},{{}},OID_CHAIN_LINKS,OID_FUSE_COVER,true,false);
+	add_object(i,655,475,60,60,invis,{EN_UNCOVER_FUSES},{{}},{EN_PROP_EVENT},{{}},OID_CHAIN_LINKS,OID_FUSE_COVER,true,false);
 	
-	add_object(i,495,155,-1,-1,powerJunction,EN_PROP_EVENT,{});
-	add_object(i,495,315,-1,-1,powerJunction,EN_PROP_EVENT,{});
-	add_object(i,495,475,-1,-1,powerJunction,EN_PROP_EVENT,{});
-	add_object(i,655,155,-1,-1,powerJunction,EN_PROP_EVENT,{});
-	add_object(i,655,315,-1,-1,powerJunction,EN_PROP_EVENT,{});
-	add_object(i,655,475,-1,-1,powerJunction,EN_PROP_EVENT,{});
+	//temp test
+	add_object(i,0,0,20,20,placeHolder,{EN_ADD_ITEM_TO_INV},{{OID_CHAIN_LINKS,WID_INV,1,placeHolder}},OID_CHAIN_LINKS);
 	
-	add_object(i,346,96,509,509,electrical_box_lid,EN_DESTROY_ALL_OBJECT_INSTANCES,{OID_ELEC_LID},EN_TEST,{0},OID_SCREWDRIVER,OID_ELEC_LID);
-	add_object(i,90,550,75,100,arrowRed_down,EN_CHANGE_SCENE,{B_ROOM_F});
+	add_object(i,346,96,509,509,electrical_box_lid,{EN_DESTROY_ALL_OBJECT_INSTANCES},{{OID_ELEC_LID}},{EN_CHANGE_TEXT_PROMPT},{{-2001,-2001,OID_ELEC_LID,3}},OID_SCREWDRIVER,OID_ELEC_LID);
+	add_object(i,90,550,75,100,arrowRed_down,{EN_CHANGE_SCENE},{{B_ROOM_F}});
 //	add_object(i,)
 	
 }
 
-void build_UI(){
+inline void build_UI(){
 //reference:
 //void add_widget(int X, int Y, int W, int H,short panelID, short type, bool visible,std::string sprite_text ="",event_t eventID=EN_PROP_EVENT, data t={},SN_ID sprID=invis, int SID=0);
 	int id = create_panel(0,0,1200,700,MAIN_MENU,1); 
@@ -441,7 +487,7 @@ void build_UI(){
 	curPanel=savedPanels[MAIN_MENU];
 }
 
-void user_input(const ALLEGRO_EVENT& ev){
+inline void user_input(const ALLEGRO_EVENT& ev){
 	switch(ev.type){
 		case ALLEGRO_EVENT_DISPLAY_CLOSE:
 			handler.set_flag_val(GEV_GAME_RUNNING,true);
@@ -506,7 +552,7 @@ void destroy_all_object_instances(data*t){
 
 	int re;
 	for(std::map<int,screen*>::iterator i = scenes.begin(); i != scenes.end(); i++){
-		if(i->second) while(i->second->delete_child_object(t->at(0))){;};
+		if(i->second) while(i->second->delete_child_object(t->at(0)))
 		if(screen::currentScreen == i->second)re=i->first;
 	}
 	change_scene(re);
@@ -540,7 +586,7 @@ void change_selected_item(data*t){
 	
 }
 
-void create_text_box_prompt(data*t){add_object(t->at(4),0,0,1000,700,invis,EN_CHANGE_TEXT_PROMPT,*t,OID_TEXT_PROMPT);}
+void create_text_box_prompt(data*t){add_object(t->at(4),0,0,1000,700,invis,{EN_CHANGE_TEXT_PROMPT},{*t},OID_TEXT_PROMPT);}
 
 void show_text_prompt_of_object(data*t){;}
 
@@ -550,7 +596,7 @@ void change_text_prompt(data*t){
 	printf("Cur bit of dialogue: %d\nTarget bit of dialogue: %d\n",t->at(0),t->at(1));
 	if(t->at(0)>t->at(1) && t->at(0) != INT_MIN){
 		t->at(0)-=1;
-		screen::currentScreen->change_object_event(ptr,make_event(EN_CHANGE_TEXT_PROMPT,*t));
+		screen::currentScreen->change_object_event(ptr,{make_event(EN_CHANGE_TEXT_PROMPT,*t)});
 	}
 	else{
 		std::vector<int> temp={};
@@ -566,14 +612,16 @@ void change_text_prompt(data*t){
 				break;
 			case 2: //Creates a new dialogue; for the object with a different terget;
 				for(i = t->at(4);i < t->size();i++)temp.push_back(t->at(i));
-				screen::currentScreen->change_object_event(ptr,make_event(EN_CHANGE_TEXT_PROMPT,temp));
+				screen::currentScreen->change_object_event(ptr,{make_event(EN_CHANGE_TEXT_PROMPT,temp)});
 			case 3: //Keeps replaying the same bit of dialogue;
 				break;
 		}
 	}
 }
 
-void start_game(data*t){
+
+
+inline void start_game(data*t){
 	handler.reset_all_flags();
 
 	screen::currentScreen = change_scene(B_ROOM_F);
@@ -586,37 +634,45 @@ void start_game(data*t){
 }
 
 void alter_flag(data*t){
+	printf("Flag altered!\n");
 	gEventFlags key = (gEventFlags)t->at(0);
 	int val = handler.ret_flag_val(key);
 	switch(t->at(1)){
-		case 0: handler.set_flag_val(key,t->at(2));break;
-		case 1: handler.set_flag_val(key,val+t->at(2));break;
-		case 2: handler.set_flag_val(key,val-t->at(2));break;
-		case 3: handler.set_flag_val(key,val*t->at(2));break;
-		case 4: handler.set_flag_val(key,val/t->at(2));break;
-		case 5: handler.set_flag_val(key,val%t->at(2));break;
+		case '=': handler.set_flag_val(key,t->at(2));break;
+		case '+': handler.set_flag_val(key,val+t->at(2));break;
+		case '-': handler.set_flag_val(key,val-t->at(2));break;
+		case '*': handler.set_flag_val(key,val*t->at(2));break;
+		case '/': handler.set_flag_val(key,val/t->at(2));break;
+		case '%': handler.set_flag_val(key,val%t->at(2));break;
 	}
 }
 
 void fuse_turn(data*t){
-	alter_flag(t);
-	handler.set_flag_val((gEventFlags)t->at(0),handler.ret_flag_val((gEventFlags)t->at(0))%6);
-	if(handler.ret_flag_val(GEV_FUSE1_POS)==1 && handler.ret_flag_val(GEV_FUSE1_POS)==2 && handler.ret_flag_val(GEV_FUSE1_POS)==3 
-	&& handler.ret_flag_val(GEV_FUSE1_POS)==4 && handler.ret_flag_val(GEV_FUSE1_POS)==5 && handler.ret_flag_val(GEV_FUSE1_POS)==6);
+	printf("Flag %d value: %d\n",t->at(1),handler.ret_flag_val(gEventFlags(t->at(1))));
+	screen::currentScreen->change_object_sprite(screen::currentScreen->find_object_with_ID((objID)t->at(0)),SN_ID(powerJunction0+handler.ret_flag_val(gEventFlags(t->at(1)))));
+	change_scene(screen::currentScreen);
+//	if(handler.ret_flag_val(GEV_FUSE1_POS)==1 && handler.ret_flag_val(GEV_FUSE1_POS)==2 && handler.ret_flag_val(GEV_FUSE1_POS)==3 
+//	&& handler.ret_flag_val(GEV_FUSE1_POS)==4 && handler.ret_flag_val(GEV_FUSE1_POS)==5 && handler.ret_flag_val(GEV_FUSE1_POS)==6);
 }
 
-void register_events(){
-	handler.add_event(EN_PROP_EVENT, NULL);
-	handler.add_event(EN_TEST, &example_event);
-	handler.add_event(EN_CHANGE_SCENE, &scene_change);
-	handler.add_event(EN_START_GAME, &start_game);
-	handler.add_event(EN_ADD_ITEM_TO_INV, &add_item_to_inv);
-	handler.add_event(EN_DESTROY_OBJECT_AT_SCENE, &destroy_object_at_scene);
-	handler.add_event(EN_DESTROY_OBJECT_AT_THIS_SCENE, &destroy_object_at_this_scene);
-	handler.add_event(EN_DESTROY_ALL_OBJECT_INSTANCES, &destroy_all_object_instances);
-	handler.add_event(EN_CHANGE_SELECTED_ITEM, &change_selected_item);
-	handler.add_event(EN_CREATE_TEXT_BOX_PROMPT, &create_text_box_prompt);
-	handler.add_event(EN_CHANGE_TEXT_PROMPT, &change_text_prompt);
+inline void register_events(){
+	handler.add_event(EN_PROP_EVENT						,  NULL);
+	handler.add_event(EN_TEST							, &example_event);
+	handler.add_event(EN_CHANGE_SCENE					, &scene_change);
+	handler.add_event(EN_START_GAME						, &start_game);
+	handler.add_event(EN_ADD_ITEM_TO_INV				, &add_item_to_inv);
+	handler.add_event(EN_DESTROY_OBJECT_AT_SCENE		, &destroy_object_at_scene);
+	handler.add_event(EN_DESTROY_OBJECT_AT_THIS_SCENE	, &destroy_object_at_this_scene);
+	handler.add_event(EN_DESTROY_ALL_OBJECT_INSTANCES	, &destroy_all_object_instances);
+	handler.add_event(EN_CHANGE_SELECTED_ITEM			, &change_selected_item);
+	handler.add_event(EN_CREATE_TEXT_BOX_PROMPT			, &create_text_box_prompt);
+	handler.add_event(EN_CHANGE_TEXT_PROMPT				, &change_text_prompt);
+	handler.add_event(EN_ALTER_FLAG						, &alter_flag);
+	handler.add_event(EN_FUSE_TURN						, &fuse_turn);
+	
+// UNIQUE HELPER EVENTS - sometimes, writing dozens of events multiple times is not faster than making a simple custom one
+	
+	handler.add_event(EN_UNCOVER_FUSES					, &uncover_fuses);
 }
 //NOTICE: All of the events that are meant to be used in the game, must be regstered in the 
 //		eventhandler's event-function map, using the function above

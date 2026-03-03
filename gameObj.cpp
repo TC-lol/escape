@@ -7,38 +7,38 @@
 
 std::map<int,screen*> scenes;
 
-object::object(int nx, int ny, int nw, int nh,SN_ID spriteID,event eve,objID SID, bool visib, bool act)
+object::object(int nx, int ny, int nw, int nh,SN_ID spriteID,eventSet eve,objID SID, bool visib, bool act)
 	:x(nx), y(ny),action(eve), sID(SID), visible(visib), interactable(act){
 	sprite=sprites[spriteID];
 	w=nw<0?al_get_bitmap_width(sprite):nw;
 	h=nh<0?al_get_bitmap_height(sprite):nh;
 	std::cout<<sID<<std::endl;
-}
+} 
 
 int object::ret_ID(){return sID;}
 
-void object::send_event(){handler.queue_event(&action);}
+void object::send_event(){for(auto& i: action)handler.queue_event(&i);}
 
-itemGatedObject::itemGatedObject(int nx, int ny, int nw, int nh,SN_ID spriteID,event eve,event altEve,int ItemID,objID SID,bool visib, bool act)
+itemGatedObject::itemGatedObject(int nx, int ny, int nw, int nh,SN_ID spriteID,eventSet eve,eventSet altEve,int ItemID,objID SID,bool visib, bool act)
 	:object(nx, ny, nw, nh, spriteID, eve,SID,visib, act),reqItemID(ItemID),altAction(altEve){printf("//////////////////////////////////////////");}
 
 void itemGatedObject::send_event(){
 	int num = handler.ret_flag_val(GEV_CUR_HELD_ITEM);
 	printf("Expected: %d\nReceived: %d\n",reqItemID,num);
-	if(num==reqItemID) 	handler.queue_event(&action);
-	else 				handler.queue_event(&altAction);
+	if(num==reqItemID) 	for(auto& i: action)handler.queue_event(&i);
+	else 				for(auto& i: altAction)handler.queue_event(&i);
 }
 
-flagGatedObject::flagGatedObject(int nx, int ny, int nw, int nh,SN_ID spriteID,event eve,event altEve, std::vector<int> fKey, std::vector<int> fVal, objID SID, bool visib, bool act)
+flagGatedObject::flagGatedObject(int nx, int ny, int nw, int nh,SN_ID spriteID,eventSet eve,eventSet altEve, data fKey, data fVal, objID SID, bool visib, bool act)
 	:object(nx, ny, nw, nh, spriteID, eve,SID,visib, act), flagKey(fKey), flagVal(fVal), altAction(altEve){;}
 
 void flagGatedObject::send_event(){
 	for(int i=0;i<flagKey.size();i++)
 		if(handler.ret_flag_val((gEventFlags)flagKey[i])!=flagVal[i]) {
-			handler.queue_event(&altAction);
+			for(auto& i: altAction)handler.queue_event(&i);
 			return;
 		}
-	handler.queue_event(&action);
+	for(auto& i: action)handler.queue_event(&i);
 }
 
 screen* screen::currentScreen = NULL;
@@ -52,22 +52,16 @@ screen::screen(int ID, SN_ID spr)
 }
 
 screen::~screen(){
-//	std::forward_list<object*>::iterator i;
-	while(!interact.empty()){
-		delete *interact.begin();
-		interact.pop_front();
-	}
-//	for(std::forward_list<object*>::iterator i = interact.begin();i!=interact.end();i++) delete *i;
+	for(std::forward_list<object*>::iterator i = interact.begin();i!=interact.end();i++) delete *i;
 }
 
 bool screen::delete_child_object(int childSID){
 	std::cout<<childSID<<"\nDEL\n";
 	if(childSID==OID_GENERIC)return false;
 	std::cout<<"DELETE\n";
-	for(std::forward_list<object*>::iterator i = interact.before_begin();std::next(i)!=interact.end() ;i++){
-		std::cout<<(**std::next(i)).sID<< ' ' << *std::next(i) << std::endl;
-		if(!*std::next(i)) continue;
-		if((*std::next(i))->sID == childSID){
+	for(std::forward_list<object*>::iterator i = interact.before_begin();std::next(i)!=interact.end();i++){
+		std::cout<<(**std::next(i)).sID<<std::endl;
+		if((**std::next(i)).sID == childSID){
 			
 			delete *std::next(i);
 			interact.erase_after(i);
@@ -80,7 +74,7 @@ bool screen::delete_child_object(int childSID){
 void screen::find_object(int x, int y){
 	for(auto i: interact){
 		if(x>=i->x && x<=i->x+i->w && y>=i->y && y<=i->y+i->h){
-			handler.queue_event(&i->action);
+			for(auto& j: i->action)handler.queue_event(&j);
 		}
 	}
 }
@@ -94,32 +88,57 @@ object* screen::find_object_with_ID(objID ID){
 	return it==interact.end() ? NULL : *it;
 }
  
-bool screen::change_object_event(object* objPtr, event ev){
+bool screen::change_object_event(object* objPtr, eventSet ev){
 	if(!objPtr)return false;
 	objPtr->action = ev;  
 	return true;
 }
 
-void add_object(int sceneID, int x,int y,int w,int h,SN_ID bitmapID,event_t eventID, std::vector<int> data,objID SID,bool act, bool visib){
+bool screen::change_object_sprite(object* objPtr, SN_ID sprID){
+	objPtr->sprite = sprites[sprID];
+	return objPtr->sprite;
+}
+
+void add_object(int sceneID, int x,int y,int w,int h,SN_ID bitmapID,std::vector<event_t> eventID, dataSet dataX,objID SID,bool act, bool visib){
 	try{
-	event NEW(eventID,data);
+	printf("So we are here...\n");
+	eventSet NEW;
+	NEW.resize(eventID.size());
+//	printf("%d\n",eventID.size());
+	for(int i=0, n=eventID.size();i<n;i++){
+//		event temporary(eventID[i],dataX[i]);
+//		printf("This works fine...\n");
+//		NEW.at(i)=temporary;
+		NEW[i]=event(eventID[i],dataX[i]);
+	}
+	
+	printf("Setting events successful...\n");
 	object* temp; 
 	
 	temp = new object(x,y,w,h,bitmapID,NEW,SID,visib,act);
 	
 	scenes[sceneID]->interact.push_front(temp);
 	}
+	
 	catch(...){
 		
 		std::cout<<"Does this thing even work???\n";
-		printf("An error has occured during creation of a level.\nCheck if:\n - The sceneID is not equal to 0\n that is all.\n");
+		printf("An error has occured during creation of an object.\nCheck if:\n - The sceneID is not equal to 0\n that is all.\n");
+		std::system("pause");
 	}
+	
 }
 
-void add_object(int sceneID, int x,int y,int w,int h,SN_ID bitmapID,event_t eventID, std::vector<int> data,event_t altEventID, std::vector<int> altData, int rqItem,objID SID,bool act, bool visib){
+void add_object(int sceneID, int x,int y,int w,int h,SN_ID bitmapID,std::vector<event_t> eventID, dataSet dataX,std::vector<event_t> altEventID, dataSet altData, int rqItem,objID SID,bool act, bool visib){
 	try{
-	event NEW(eventID,data);
-	event els(altEventID,altData);
+//	event NEW(eventID,data);
+//	event els(altEventID,altData);
+	
+	eventSet NEW, els;
+	NEW.resize(eventID.size()); els.resize(altEventID.size());
+	for(int i=0, n=eventID.size();i<n;i++) NEW[i]=event(eventID[i],dataX[i]);
+	for(int i=0, n=altEventID.size();i<n;i++) els[i]=event(altEventID[i],altData[i]);
+	
 	object* temp; 
 	
 	temp = new itemGatedObject(x,y,w,h,bitmapID,NEW,els,rqItem,SID,visib,act);
@@ -129,16 +148,26 @@ void add_object(int sceneID, int x,int y,int w,int h,SN_ID bitmapID,event_t even
 	catch(...){
 		
 		std::cout<<"Does this thing even work???\n";
-		printf("An error has occured during creation of a level.\nCheck if:\n - The sceneID is not equal to 0\n that is all.\n");
+		printf("An error has occured during creation of an object.\nCheck if:\n - The sceneID is not equal to 0\n that is all.\n");
 	}
 }
 
-void add_object(int sceneID, int x,int y,int w,int h,SN_ID bitmapID,event_t eventID, std::vector<int> data,event_t altEventID, std::vector<int> altData, std::vector<int> flagKey, std::vector<int> flagVal	,objID SID,bool act, bool visib){
+void add_object(int sceneID, int x,int y,int w,int h,SN_ID bitmapID,std::vector<event_t> eventID, dataSet dataX,std::vector<event_t> altEventID, dataSet altData, std::vector<int> flagKey, std::vector<int> flagVal	,objID SID,bool act, bool visib){
 	try{
+
+	eventSet NEW, els;
+	for(int i=0, n=eventID.size();i<n;i++) NEW[i]=event(eventID[i],dataX[i]);
+	for(int i=0, n=altEventID.size();i<n;i++) els[i]=event(altEventID[i],altData[i]);
+		
+		
+		
+		
+	/*	
 	event NEW(eventID,data);
 	event els(altEventID,altData);
+	*/
 	object* temp; 
-	
+
 	temp = new flagGatedObject(x,y,w,h,bitmapID,NEW,els,flagKey,flagVal,SID,visib,act);
 	
 	scenes[sceneID]->interact.push_front(temp);
@@ -146,7 +175,7 @@ void add_object(int sceneID, int x,int y,int w,int h,SN_ID bitmapID,event_t even
 	catch(...){
 		
 		std::cout<<"Does this thing even work???\n";
-		printf("An error has occured during creation of a level.\nCheck if:\n - The sceneID is not equal to 0\n that is all.\n");
+		printf("An error has occured during creation of an object.\nCheck if:\n - The sceneID is not equal to 0\n that is all.\n");
 	}
 }
 
@@ -160,6 +189,18 @@ screen* change_scene(int sc){
 		if(i->visible)graphMNG.add_to_queue(std::make_pair(i->x,i->y),std::make_pair(i->w,i->h),i->sprite);
 	graphMNG.add_to_queue(std::make_pair(0,0), std::make_pair(screen::sceneW,screen::sceneH),scenes[sc]->background);
 	return scenes[sc];
+}
+
+screen* change_scene(screen* target){
+	if(!target)return NULL;
+	graphMNG.clear_draw_queue();
+//	graphMNG.add_to_queue(std::make_pair(0,0), std::make_pair(-1,-1),scenes[sc]->background);
+	
+	
+	for(const auto& i: target->interact) 
+		if(i->visible)graphMNG.add_to_queue(std::make_pair(i->x,i->y),std::make_pair(i->w,i->h),i->sprite);
+	graphMNG.add_to_queue(std::make_pair(0,0), std::make_pair(screen::sceneW,screen::sceneH),target->background);
+	return target;
 }
 
 void action(int x, int y, screen* scene){

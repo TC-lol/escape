@@ -12,7 +12,9 @@
 
 #include "globalEnums.h"
 
+typedef std::vector<int> data;
 typedef std::vector<std::vector<int>> dataSet;
+typedef std::vector<event> eventSet;
 typedef std::vector<std::pair<std::vector<int>,int>> eventDataPairSet;
 
 class screen;
@@ -28,6 +30,7 @@ object* find_object_at_scene(screen* sc1, int sc2, int objID);
 class object{ //base object
 friend class screen;
 friend screen* change_scene(int);
+friend screen* change_scene(screen*);
 friend void action(int,int,screen*); 
 
 protected:
@@ -37,13 +40,13 @@ protected:
 	int h;
 	objID sID;
 	ALLEGRO_BITMAP* sprite;
-	event action;
+	eventSet action;
 	virtual void send_event();
 public:
 	bool visible;
 	bool interactable;
 	
-	object(int nx, int ny, int nw, int nh,SN_ID spriteID,event eve,objID SID=OID_GENERIC, bool visib=true, bool act=true);
+	object(int nx, int ny, int nw, int nh,SN_ID spriteID,eventSet eve,objID SID=OID_GENERIC, bool visib=true, bool act=true);
 
 	int ret_ID();
 }; 
@@ -61,23 +64,23 @@ public:
 
 class itemGatedObject : public object{ //An object that requires 
 private:
-	event altAction;
+	eventSet altAction;
 	int reqItemID;
 	virtual void send_event();
 public:
-	itemGatedObject(int nx, int ny, int nw, int nh,SN_ID spriteID,event eve,event altEve,int ItemID,objID SID=OID_GENERIC, bool visib=true, bool act=true);
+	itemGatedObject(int nx, int ny, int nw, int nh,SN_ID spriteID,eventSet eve,eventSet altEve,int ItemID,objID SID=OID_GENERIC, bool visib=true, bool act=true);
 };
 
 class flagGatedObject : public object{
 private:
-	std::vector<int> flagKey;
-	std::vector<int> flagVal;
-	event altAction;
+	data 		flagKey;
+	data	 	flagVal;
+	eventSet 	altAction;
 	
 	virtual void send_event();
 public:
 	
-	flagGatedObject(int nx, int ny, int nw, int nh,SN_ID spriteID,event eve,event altEve, std::vector<int> fKey, std::vector<int> fVal, objID SID=OID_GENERIC, bool visib=true, bool act=true);
+	flagGatedObject(int nx, int ny, int nw, int nh,SN_ID spriteID,eventSet eve,eventSet altEve, data fKey, data fVal, objID SID=OID_GENERIC, bool visib=true, bool act=true);
 };
 
 //void destroy_all_scenes();
@@ -85,11 +88,12 @@ public:
 class screen{
 	   
 friend void action(int, int, screen*);
-friend void add_object(int, int,int,int,int,SN_ID,event_t,std::vector<int>,event_t,std::vector<int>,int,objID,bool,bool);
-friend void add_object(int, int,int,int,int,SN_ID,event_t,std::vector<int>,event_t,std::vector<int>,std::vector<int>,std::vector<int>,objID,bool,bool);
-friend void add_object(int, int,int,int,int,SN_ID,event_t,std::vector<int>,objID,bool,bool);
+friend void add_object(int, int,int,int,int,SN_ID,std::vector<event_t>,dataSet,std::vector<event_t>,dataSet,int,objID,bool,bool);
+friend void add_object(int, int,int,int,int,SN_ID,std::vector<event_t>,dataSet,std::vector<event_t>,dataSet,data,data,objID,bool,bool);
+friend void add_object(int, int,int,int,int,SN_ID,std::vector<event_t>,dataSet,objID,bool,bool);
 friend void next_text_box_prompt(data);
 friend screen* change_scene(int);
+friend screen* change_scene(screen*);
 friend void destroy_all_scenes();
 friend object* find_object_at_scene(int,screen*,int);
 friend int main();
@@ -109,7 +113,8 @@ public:
 	
 	object* find_object_with_ID(objID ID);
 	bool delete_child_object(int childSID);
-	bool change_object_event(object* objPtr, event ev);
+	bool change_object_event(object* objPtr, eventSet ev);
+	bool change_object_sprite(object* objPtr, SN_ID sprID);
 
 };
 
@@ -120,28 +125,32 @@ screen *change_scene(int sc=0);
 	23.10.25 16:01 : As of now, it reloads the current scene if sc = 0, or no parameter is provided.
 	Surely it will not cause any problems down the line.
 */
+
+screen* change_scene(screen* target);
+
 void action(int x, int y, screen* scene);
 /*
 	Iterates over the objects associated with a given scene, finding the first object
 	overlapping with the given position and sending its event ID with a data package
 	to the event handler to be executed
 */
-void add_object(int sceneID						, int x						, int y			, int w				,
-				int h							, SN_ID bitmapID			, event_t eventID	,
-				std::vector<int> data			, objID SID=OID_GENERIC		, bool act=true	, bool visib=true);
+void add_object(int sceneID						, int x										, int y			, int w				,
+				int h							, SN_ID bitmapID							,
+				std::vector<event_t> eventID	, dataSet dataX		, 
+				objID SID=OID_GENERIC			, bool act=true								, bool visib=true);
 //				event_t altEventID=EN_PROP_EVENT,std::vector<int> altData={}, std::string rqItem="");
 				
 void add_object(int sceneID				, int x						, int y			, int w				,
-				int h					, SN_ID bitmapID			, event_t eventID	,
-				std::vector<int> data			,
-				event_t altEventID		, std::vector<int>			, int rqItem,
+				int h					, SN_ID bitmapID			, std::vector<event_t> eventID	,
+				dataSet dataX			,
+				std::vector<event_t> altEventID		, dataSet altData	, int rqItem,
 				objID SID=OID_GENERIC	, bool act=true			, bool visib=true);
 
-void add_object(int sceneID				, int x						, int y			, int w	,
-				int h					, SN_ID bitmapID			, event_t eventID		,
-				std::vector<int> data	, event_t altEventID		,std::vector<int>altData,
-				std::vector<int> flagKey, std::vector<int> flagVal	,
-				objID SID=OID_GENERIC	, bool act=true				, bool visib=true		);
+void add_object(int sceneID				, int x					, int y			, int w	,
+				int h					, SN_ID bitmapID		, std::vector<event_t> eventID		,
+				dataSet dataX			, event_t altEventID	, dataSet altData,
+				data  flagKey			, data flagVal	,
+				objID SID=OID_GENERIC	, bool act=true			, bool visib=true		);
 
 /*
 	Adds an object to a scene with a specified ID, with origin point at designated position,
